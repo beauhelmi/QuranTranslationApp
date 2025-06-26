@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quran Surah Translation Input</title>
+    <title>Quran TT Tracker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -79,10 +79,41 @@
             display: none;
             margin: 20px 0;
         }
+        #last-updated {
+        text-align: center;
+        margin: 10px 0;
+        font-style: italic;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #dashboard, #surah-profile {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        #dashboard h3, #surah-profile h3 {
+            margin-top: 0;
+        }
+            #dashboard p, #surah-profile p {
+                margin: 5px 0;
+            }
+            #dashboard span, #surah-profile span {
+                font-weight: bold;
+            }
+            
     </style>
 </head>
 <body>
-    <h1>Quran Surah Translation Input</h1>
+    <h1>Quran TT Tracker</h1>
     <select id="surah-select">
         <option value="">Select a Surah</option>
         <!-- Surah options will be populated dynamically -->
@@ -94,14 +125,33 @@
     </div>
     <div id="progress-text">Progress: 0%</div>
     <button onclick="saveProgress()">Save Progress</button>
-
+    <div id="last-updated">Last updated: Not saved yet</div>
+    <button onclick="exportData()">Export to Excel</button>
+    <input type="file" id="import-file" accept=".json">
+    <button onclick="importData()">Import Data</button>
+    <button onclick="clearData()">Clear Data</button>
+    <div id="dashboard" style="margin-top: 20px;">
+        <h3>Dashboard</h3>
+        <p id="total-surahs">Total Surahs: <span>0</span></p>
+        <p id="completed-surahs">Completed Surahs: <span>0</span></p>
+    </div>
+    <div id="surah-profile" style="margin-top: 20px; display: none;">
+        <h3>Surah Profile</h3>
+        <p><strong>Name:</strong> <span id="profile-name"></span></p>
+        <p><strong>Revelation Place:</strong> <span id="profile-place"></span></p>
+        <p><strong>Theme:</strong> <span id="profile-theme"></span></p>
+    </div>
     <script>
         const surahData = {
-            "Al-Fatiha": { verseCount: 7, surahNumber: 1 },
-            "Al-Baqarah": { verseCount: 286, surahNumber: 2 },
-            "Al-Imran": { verseCount: 200, surahNumber: 3 },
-            "An-Nisa": { verseCount: 176, surahNumber: 4 },
-            "Al-Ma'idah": { verseCount: 120, surahNumber: 5 }
+            "Al-Fatiha": { verseCount: 7, surahNumber: 1 , profile: { name: "Al-Fatiha", place: "Mecca", theme: "Prayer and Guidance" }},
+            "Al-Baqarah": { verseCount: 286, surahNumber: 2, profile: { name: "Al-Baqarah", place: "Medina", theme: "Guidance for Mankind" }},
+            "Al-Imran": { verseCount: 200, surahNumber: 3, profile: { name: "Al-Imran", place: "Medina", theme: "Family and Community" }},
+            "An-Nisa": { verseCount: 176, surahNumber: 4, profile: { name: "An-Nisa", place: "Medina"}},
+            "Al-Ma'idah": { verseCount: 120, surahNumber: 5, profile: { name: "Al-Ma'idah", place: "Medina", theme: "Law and Ethics" }},
+            "Al-An'am": { verseCount: 165, surahNumber: 6, profile: { name: "Al-An'am", place: "Mecca", theme: "Faith and Worship" }},
+            "Al-A'raf": { verseCount: 206, surahNumber: 7, profile: { name: "Al-A'raf", place: "Mecca", theme: "Prophets and Communities" }},
+            "Al-Anfal": { verseCount: 75, surahNumber: 8, profile: { name: "Al-Anfal", place: "Medina", theme: "War and Peace" }},
+            "At-Tawbah": { verseCount: 129, surahNumber: 9, profile: { name: "At-Tawbah", place: "Medina", theme: "Repentance and Forgiveness" }},                                                 
             // Add more Surahs as needed: "SurahName": { verseCount: X, surahNumber: Y }
         };
 
@@ -120,16 +170,27 @@
         });
 
         // Load verses when a Surah is selected
-        surahSelect.addEventListener("change", () => {
-            const selectedSurah = surahSelect.value;
-            if (selectedSurah) {
-                loadVerses(selectedSurah);
-                localStorage.setItem("lastSurah", selectedSurah);
+      surahSelect.addEventListener("change", () => {
+        const selectedSurah = surahSelect.value;
+        if (selectedSurah) {
+            loadVerses(selectedSurah);
+            const profile = surahData[selectedSurah].profile;
+            const profileDiv = document.getElementById("surah-profile");
+            if (profile) {
+                document.getElementById("profile-name").textContent = profile.name;
+                document.getElementById("profile-place").textContent = profile.place;
+                document.getElementById("profile-theme").textContent = profile.theme;
+                profileDiv.style.display = "block";
             } else {
-                versesContainer.innerHTML = "";
-                updateProgress();
+                profileDiv.style.display = "none";
             }
-        });
+            localStorage.setItem("lastSurah", selectedSurah);
+        } else {
+            versesContainer.innerHTML = "";
+            document.getElementById("surah-profile").style.display = "none";
+            updateProgress();
+        }
+    });
 
         async function loadVerses(surah) {
             versesContainer.innerHTML = "";
@@ -179,6 +240,10 @@
                                 <option value="Yes" ${verseData.completed === "Yes" ? "selected" : ""}>Yes</option>
                                 <option value="No" ${verseData.completed === "No" ? "selected" : ""}>No</option>
                             </select>
+                        </div>
+                        <div class="verse-field">
+                            <label>Nota Tambahan:</label>
+                            <textarea placeholder="Enter additional notes for verse ${i}" data-verse="${i}" data-field="notes">${verseData.notes}</textarea>
                         </div>
                     `;
                     versesContainer.appendChild(verseDiv);
@@ -235,9 +300,90 @@
                     completed: container.querySelector("select[data-field='completed']").value
                 };
             });
+            
+            const timestamp = new Date().toLocaleString();
+        localStorage.setItem(`data_${selectedSurah}`, JSON.stringify({ verses: data, lastUpdated: timestamp }));
+        document.getElementById("last-updated").textContent = `Last updated: ${timestamp}`;            
+        alert("Progress saved!");
+        }
 
-            localStorage.setItem(`data_${selectedSurah}`, JSON.stringify(data));
-            alert("Progress saved!");
+        function exportData() {
+            const selectedSurah = surahSelect.value;
+            if (!selectedSurah) {
+                alert("Please select a Surah to export.");
+                return;
+            }
+            const data = JSON.parse(localStorage.getItem(`data_${selectedSurah}`)) || {};
+            if (!data.verses) {
+                alert("No data to export for this Surah.");
+                return;
+            }
+            let csv = "Ayat Number,Arabic Verse,Translation,Action Items,Pictures,Completed,Nota Tambahan\n";
+            const { verseCount, surahNumber } = surahData[selectedSurah];
+            for (let i = 1; i <= verseCount; i++) {
+                const verseData = data.verses[i] || {};
+                csv += `${i},${verseData.arabic || ""},"${verseData.translation || ""}","${verseData.actionItems || ""}","${verseData.pictures || ""}",${verseData.completed || "No"},"${verseData.notes || ""}"\n`;
+            }
+            const blob = new Blob([csv], { type: "text/csv" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${selectedSurah}_data.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData() {
+            const selectedSurah = surahSelect.value;
+            if (!selectedSurah) {
+                alert("Please select a Surah first.");
+                return;
+            }
+            const fileInput = document.getElementById("import-file");
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a file to import.");
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    localStorage.setItem(`data_${selectedSurah}`, JSON.stringify(data));
+                    loadVerses(selectedSurah);
+                    alert("Data imported successfully!");
+                } catch (error) {
+                    alert("Error importing data. Please ensure it’s a valid JSON file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearData() {
+            const selectedSurah = surahSelect.value;
+            if (!selectedSurah) {
+                alert("Please select a Surah to clear.");
+                return;
+            }
+            if (confirm(`Are you sure you want to clear all data for ${selectedSurah}?`)) {
+                localStorage.removeItem(`data_${selectedSurah}`);
+                loadVerses(selectedSurah);
+                alert("Data cleared!");
+            }
+        }
+
+        function updateDashboard() {
+            const totalSurahs = Object.keys(surahData).length;
+            let completedSurahs = 0;
+            Object.keys(surahData).forEach(surah => {
+                const data = JSON.parse(localStorage.getItem(`data_${surah}`)) || {};
+                const verses = data.verses || {};
+                const verseCount = surahData[surah].verseCount;
+                const completed = Object.values(verses).filter(v => v.completed === "Yes").length;
+                if (completed === verseCount) completedSurahs++;
+            });
+            document.getElementById("total-surahs").querySelector("span").textContent = totalSurahs;
+            document.getElementById("completed-surahs").querySelector("span").textContent = completedSurahs;
         }
 
         // Load saved Surah selection
