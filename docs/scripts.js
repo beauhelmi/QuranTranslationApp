@@ -104,42 +104,20 @@ Object.keys(surahData).forEach(surah => {
     surahSelect.appendChild(option);
 });
 
-// Load verses when a Surah is selected
-surahSelect.addEventListener("change", () => {
-const selectedSurah = surahSelect.value;
-if (selectedSurah) {
-    loadVerses(selectedSurah);
-    const profile = surahData[selectedSurah].profile;
-    const profileDiv = document.getElementById("surah-profile");
-    if (profile) {
-        document.getElementById("profile-name").textContent = profile.name;
-        document.getElementById("profile-place").textContent = profile.place;
-        document.getElementById("profile-theme").textContent = profile.theme;
-        profileDiv.style.display = "block";
-    } else {
-        profileDiv.style.display = "none";
-    }
-    localStorage.setItem("lastSurah", selectedSurah);
-} else {
-    versesContainer.innerHTML = "";
-    document.getElementById("surah-profile").style.display = "none";
-    updateProgress();
-}
-});
 
-async function loadVerses(surah) {
+async function loadVerses(surah) { 
 versesContainer.innerHTML = "";
 loadingDiv.style.display = "block";
 const { verseCount, surahNumber } = surahData[surah];
 const savedData = JSON.parse(localStorage.getItem(`data_${surah}`)) || { verses: {} };
 document.getElementById("last-updated").textContent = savedData.lastUpdated ? `Last updated: ${savedData.lastUpdated}` : "Last updated: Not saved yet";
 
-try {
+try { // Fetch Arabic verses from the Quran API
     const response = await fetch(`https://api.alquran.cloud/v1/surah/${surahNumber}`);
     const data = await response.json();
     const arabicVerses = data.data.ayahs.map(ayah => ayah.text);
 
-    let startIndex = 0;
+    let startIndex = 0; 
     if (surahNumber === 9) {
         // Skip Bismillah entirely for Surah 9 (At-Taubah)
         startIndex = 0; // No adjustment needed, but ensure no extra ayat is counted
@@ -149,7 +127,7 @@ try {
         }
     const effectiveVerses = arabicVerses.slice(startIndex);
 
-    for (let i = 1; i <= verseCount; i++) {
+    for (let i = 1; i <= verseCount; i++) { 
         const verseData = savedData.verses[i] || {
             translation: "",
             actionItems: "",
@@ -158,10 +136,10 @@ try {
             notes: ""
         };
         const arabicText = (i === 1 && surahNumber === 1) ? arabicVerses[0] : effectiveVerses[i - 1] || "Arabic text not available";
-        const verseDiv = document.createElement("div");
+        const verseDiv = document.createElement("div"); 
         verseDiv.className = "verse-container";
         verseDiv.innerHTML = `
-            <div class="verse-field">
+            <div class="verse-field"> 
                 <label>Ayat Number:</label>
                 <div>${i}</div>
             </div>
@@ -200,7 +178,7 @@ try {
         versesContainer.appendChild(verseDiv);
     }
 
-    document.querySelectorAll("textarea, input, select").forEach(element => {
+    document.querySelectorAll("textarea, input, select").forEach(element => { 
         element.addEventListener("input", updateProgress);
     });
 
@@ -326,6 +304,33 @@ function clearData() {
 
 function updateDashboard() {
     const selectedSurah = surahSelect.value;
+
+    // Calculate global totals across all Surahs
+    let totalAyat = 0;
+    let totalAyatCompleted = 0;
+    Object.keys(surahData).forEach(surah => {
+        const data = JSON.parse(localStorage.getItem(`data_${surah}`)) || { verses: {} };
+        const verseCount = surahData[surah].verseCount;
+        const completed = Object.values(data.verses || {}).filter(v => v.completed === "Yes").length;
+        totalAyat += verseCount;
+        totalAyatCompleted += completed;
+    });
+
+    const totalSurahs = Object.keys(surahData).length;
+    const completedSurahs = Object.keys(surahData).filter(surah => {
+        const data = JSON.parse(localStorage.getItem(`data_${surah}`)) || { verses: {} };
+        const verseCount = surahData[surah].verseCount;
+        const completed = Object.values(data.verses || {}).filter(v => v.completed === "Yes").length;
+        return completed === verseCount;
+    }).length;
+
+    // Update dashboard with global totals by default
+    document.getElementById("total-ayat").querySelector("span").textContent = totalAyat;
+    document.getElementById("completed-ayat").querySelector("span").textContent = totalAyatCompleted;
+    document.getElementById("total-surahs").querySelector("span").textContent = totalSurahs;
+    document.getElementById("completed-surahs").querySelector("span").textContent = completedSurahs;
+
+    // If a Surah is selected, override Ayat stats with selected Surah data
     if (selectedSurah) {
         const { verseCount } = surahData[selectedSurah];
         const data = JSON.parse(localStorage.getItem(`data_${selectedSurah}`)) || { verses: {} };
@@ -333,17 +338,6 @@ function updateDashboard() {
         document.getElementById("total-ayat").querySelector("span").textContent = verseCount;
         document.getElementById("completed-ayat").querySelector("span").textContent = completedAyat;
     }
-    const totalSurahs = Object.keys(surahData).length;
-    let completedSurahs = 0;
-    Object.keys(surahData).forEach(surah => {
-        const data = JSON.parse(localStorage.getItem(`data_${surah}`)) || {};
-        const verses = data.verses || {};
-        const verseCount = surahData[surah].verseCount;
-        const completed = Object.values(verses).filter(v => v.completed === "Yes").length;
-        if (completed === verseCount) completedSurahs++;
-    });
-    document.getElementById("total-surahs").querySelector("span").textContent = totalSurahs;
-    document.getElementById("completed-surahs").querySelector("span").textContent = completedSurahs;
 }
 
 // Load saved Surah selection
@@ -352,3 +346,30 @@ if (lastSurah && surahData[lastSurah]) {
     surahSelect.value = lastSurah;
     loadVerses(lastSurah);
 }
+
+// Enhanced event listener for Surah selection
+surahSelect.addEventListener("change", () => {
+    const selectedSurah = surahSelect.value;
+    if (selectedSurah) {
+        loadVerses(selectedSurah);
+        const profile = surahData[selectedSurah].profile;
+        const profileDiv = document.getElementById("surah-profile");
+        if (profile) {
+            document.getElementById("profile-name").textContent = profile.name;
+            document.getElementById("profile-place").textContent = profile.place;
+            document.getElementById("profile-theme").textContent = profile.theme;
+            profileDiv.style.display = "block";
+        } else {
+            profileDiv.style.display = "none";
+        }
+        localStorage.setItem("lastSurah", selectedSurah);
+    } else {
+        versesContainer.innerHTML = "";
+        document.getElementById("surah-profile").style.display = "none";
+        updateProgress();
+    }
+    updateDashboard(); // Update dashboard on Surah change
+});
+
+// Initial dashboard update
+updateDashboard();
